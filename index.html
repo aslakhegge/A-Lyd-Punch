@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="theme-color" content="#0c2444" />
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="icon-192.png" />
+<link rel="apple-touch-icon" href="icon-192.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Timeklokke" />
+<title>Frilans Timeklokke</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="style.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="supabase-config.js"></script>
+</head>
+<body>
+
+<div id="authOverlay" class="auth-overlay">
+  <div class="auth-card">
+    <div class="brand-text" style="margin-bottom: 22px;">
+      <h1 style="color: var(--primary-dark);">Frilans Timeklokke</h1>
+      <p class="tagline" style="color: var(--muted);">Logg inn for å synkronisere data på tvers av enheter</p>
+    </div>
+    <div class="field">
+      <label for="authEmail">E-post</label>
+      <input type="email" id="authEmail" autocomplete="email" />
+    </div>
+    <div class="field">
+      <label for="authPassword">Passord</label>
+      <input type="password" id="authPassword" autocomplete="current-password" />
+    </div>
+    <p id="authError" class="auth-error"></p>
+    <div class="btn-row">
+      <button id="authSignInBtn" class="btn btn-primary" type="button">Logg inn</button>
+      <button id="authSignUpBtn" class="btn btn-secondary" type="button">Opprett konto</button>
+    </div>
+    <p class="hint" id="authStatus" style="margin-top: 14px; text-align: center;"></p>
+  </div>
+</div>
+
+<div id="appRoot" style="display: none;">
+<header>
+  <div class="brand">
+    <span class="brand-mark"></span>
+    <div class="brand-text">
+      <h1>Frilans Timeklokke</h1>
+      <p class="tagline" id="syncStatus">Tid, timer og fakturagrunnlag &mdash; samlet ett sted</p>
+    </div>
+    <button id="signOutBtn" class="btn-small sign-out-btn" type="button">Logg ut</button>
+  </div>
+  <nav id="tabs">
+    <button data-tab="clock" class="tab-btn active">
+      <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 15"/></svg>
+      <span class="tab-label">Klokke</span>
+    </button>
+    <button data-tab="manual" class="tab-btn">
+      <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+      <span class="tab-label">Registrer</span>
+    </button>
+    <button data-tab="projects" class="tab-btn">
+      <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>
+      <span class="tab-label">Prosjekter</span>
+    </button>
+    <button data-tab="overview" class="tab-btn">
+      <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      <span class="tab-label">Oversikt</span>
+    </button>
+  </nav>
+</header>
+
+<main>
+
+  <!-- STEMPLINGSKLOKKE -->
+  <section id="tab-clock" class="tab-panel active">
+    <div class="card">
+      <div class="field-row">
+        <div class="field">
+          <label for="clockProject">Prosjekt</label>
+          <select id="clockProject"></select>
+        </div>
+        <div class="field">
+          <label for="clockProjectNumber">Prosjektnr <span class="optional">(valgfritt, kan endres uten å bytte prosjekt)</span></label>
+          <input type="text" id="clockProjectNumber" list="projectNumbersList" placeholder="f.eks. PRJ-2026-014" />
+        </div>
+      </div>
+      <datalist id="projectNumbersList"></datalist>
+
+      <div class="timer-display" id="timerDisplay">00:00:00</div>
+      <div class="timer-project-label" id="timerProjectLabel"></div>
+
+      <div class="btn-row">
+        <button id="startBtn" class="btn btn-primary">Start</button>
+        <button id="stopBtn" class="btn btn-danger" disabled>Stopp</button>
+      </div>
+
+      <div class="field">
+        <label for="clockNotes">Merknader underveis</label>
+        <div class="notes-add-row">
+          <input type="text" id="clockNoteInput" placeholder="Skriv en merknad og trykk Legg til..." />
+          <button id="addNoteBtn" class="btn btn-secondary" type="button">Legg til</button>
+        </div>
+        <textarea id="clockNotesLog" rows="5" placeholder="Merknader vises her..." readonly></textarea>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Utlegg</h2>
+      <p class="hint">Legg til utlegg for valgt prosjekt over &mdash; f.eks. reise, parkering, materialer. Fungerer uavhengig av om klokken går.</p>
+      <div class="field-row">
+        <div class="field" style="flex: 1;">
+          <label for="expenseAmount">Beløp (kr)</label>
+          <input type="number" id="expenseAmount" step="0.01" min="0" placeholder="f.eks. 450" />
+        </div>
+        <div class="field" style="flex: 2;">
+          <label for="expenseDescription">Beskrivelse</label>
+          <input type="text" id="expenseDescription" placeholder="f.eks. Parkering, materialer..." />
+        </div>
+      </div>
+      <button id="addExpenseBtn" class="btn btn-secondary" type="button">Legg til utlegg</button>
+
+      <div class="expense-list" id="clockExpenseList"></div>
+    </div>
+  </section>
+
+  <!-- MANUELL REGISTRERING -->
+  <section id="tab-manual" class="tab-panel">
+    <div class="card">
+      <h2>Legg til manuell registrering</h2>
+      <form id="manualForm">
+        <div class="field-row">
+          <div class="field">
+            <label for="manualProject">Prosjekt</label>
+            <select id="manualProject" required></select>
+          </div>
+          <div class="field">
+            <label for="manualProjectNumber">Prosjektnr <span class="optional">(valgfritt)</span></label>
+            <input type="text" id="manualProjectNumber" list="projectNumbersList" placeholder="f.eks. PRJ-2026-014" />
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="manualDate">Dato</label>
+            <input type="date" id="manualDate" required />
+          </div>
+          <div class="field">
+            <label for="manualStart">Starttid</label>
+            <input type="time" id="manualStart" />
+          </div>
+          <div class="field">
+            <label for="manualEnd">Sluttid</label>
+            <input type="time" id="manualEnd" />
+          </div>
+        </div>
+        <div class="field">
+          <label for="manualHours">...eller timer direkte (valgfritt, overstyrer start/slutt)</label>
+          <input type="number" id="manualHours" step="0.01" min="0" placeholder="f.eks. 2.5" />
+        </div>
+        <div class="field">
+          <label for="manualNotes">Merknad</label>
+          <textarea id="manualNotes" rows="2"></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Legg til registrering</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- PROSJEKTER -->
+  <section id="tab-projects" class="tab-panel">
+    <div class="card">
+      <h2>Nytt prosjekt</h2>
+      <form id="projectForm">
+        <div class="field-row">
+          <div class="field">
+            <label for="projName">Prosjektnavn</label>
+            <input type="text" id="projName" required />
+          </div>
+          <div class="field">
+            <label for="projNumber">Standard prosjektnr <span class="optional">(valgfritt)</span></label>
+            <input type="text" id="projNumber" placeholder="Kan overstyres på stemplingssiden" />
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label for="projRateType">Type sats</label>
+            <select id="projRateType">
+              <option value="hourly">Timelønn</option>
+              <option value="daily">Dagsats</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="projRate">Sats (kr)</label>
+            <input type="number" id="projRate" step="0.01" min="0" required />
+          </div>
+          <div class="field" id="dayHoursField">
+            <label for="projDayHours">Timer per dag (for dagsats)</label>
+            <input type="number" id="projDayHours" step="0.5" min="1" value="8" />
+          </div>
+        </div>
+
+        <div class="field checkbox-field" id="overtimeToggleField">
+          <label class="checkbox-label" for="projOvertimeEnabled">
+            <input type="checkbox" id="projOvertimeEnabled" />
+            <span>Bruk overtidstillegg (50% / 100%)</span>
+          </label>
+        </div>
+        <div class="field-row" id="overtimeRatesFields" style="display: none;">
+          <div class="field">
+            <label for="projOvertime50">50% tillegg etter (timer/dag)</label>
+            <input type="number" id="projOvertime50" step="0.5" min="0" placeholder="f.eks. 8" />
+          </div>
+          <div class="field">
+            <label for="projOvertime100">100% tillegg etter (timer/dag) <span class="optional">(valgfritt)</span></label>
+            <input type="number" id="projOvertime100" step="0.5" min="0" placeholder="f.eks. 10" />
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Legg til prosjekt</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>Mine prosjekter</h2>
+      <div class="table-wrap">
+      <table id="projectsTable" class="data-table">
+        <thead>
+          <tr><th>Navn</th><th>Prosjektnr</th><th>Type</th><th>Sats</th><th>Detaljer</th><th></th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- OVERSIKT -->
+  <section id="tab-overview" class="tab-panel">
+    <div class="card">
+      <h2>Filter</h2>
+      <div class="field-row">
+        <div class="field">
+          <label for="filterProject">Prosjekt</label>
+          <select id="filterProject">
+            <option value="">Alle prosjekter</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="filterFrom">Fra dato</label>
+          <input type="date" id="filterFrom" />
+        </div>
+        <div class="field">
+          <label for="filterTo">Til dato</label>
+          <input type="date" id="filterTo" />
+        </div>
+        <div class="field">
+          <label for="filterInvoiced">Fakturert</label>
+          <select id="filterInvoiced">
+            <option value="">Alle</option>
+            <option value="no">Ikke fakturert</option>
+            <option value="yes">Fakturert</option>
+          </select>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button id="exportExcelBtn" class="btn btn-secondary">Eksporter til Excel</button>
+        <button id="exportPdfBtn" class="btn btn-secondary">Eksporter til PDF</button>
+        <button id="markInvoicedBtn" class="btn btn-secondary">Merk filtrerte som fakturert</button>
+      </div>
+    </div>
+
+    <div class="summary-cards" id="summaryCards"></div>
+
+    <div class="card">
+      <h2>Registreringer</h2>
+      <div class="table-wrap">
+      <table id="entriesTable" class="data-table">
+        <thead>
+          <tr><th>Dato</th><th>Prosjekt</th><th>Prosjektnr</th><th>Start</th><th>Slutt</th><th>Timer</th><th>Merknad</th><th>Beløp</th><th>Fakturert</th><th></th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Utlegg</h2>
+      <div class="table-wrap">
+      <table id="expensesTable" class="data-table">
+        <thead>
+          <tr><th>Dato</th><th>Prosjekt</th><th>Prosjektnr</th><th>Beskrivelse</th><th>Beløp</th><th>Fakturert</th><th></th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      </div>
+    </div>
+  </section>
+
+</main>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
