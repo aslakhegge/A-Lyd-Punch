@@ -3,7 +3,7 @@
 // åpner og fungerer offline. Data hentes fra/lagres til Supabase når
 // nett er tilgjengelig, og fra lokal cache (localStorage) ellers.
 
-const CACHE_NAME = "frilans-timeklokke-v1";
+const CACHE_NAME = "frilans-timeklokke-v3";
 
 const CORE_ASSETS = [
   "./",

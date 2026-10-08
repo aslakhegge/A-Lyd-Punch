@@ -3,17 +3,17 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<meta name="theme-color" content="#0c2444" />
+<meta name="theme-color" content="#e9e2d3" />
 <link rel="manifest" href="manifest.json" />
 <link rel="icon" href="icon-192.png" />
 <link rel="apple-touch-icon" href="icon-192.png" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
 <meta name="apple-mobile-web-app-title" content="Timeklokke" />
 <title>Frilans Timeklokke</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="style.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -25,9 +25,16 @@
 
 <div id="authOverlay" class="auth-overlay">
   <div class="auth-card">
-    <div class="brand-text" style="margin-bottom: 22px;">
-      <h1 style="color: var(--primary-dark);">Frilans Timeklokke</h1>
-      <p class="tagline" style="color: var(--muted);">Logg inn for å synkronisere data på tvers av enheter</p>
+    <div class="auth-brand">
+      <svg class="brand-logo auth-logo" viewBox="0 0 200 200" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="100" cy="100" r="88" stroke="#1d1d1b" stroke-width="8"/>
+<path d="M58 158 L100 48 L142 158" stroke="#1d1d1b" stroke-width="14"/>
+<path d="M14 118 L50 118 L58 108 L66 128 L74 100 L82 136 L90 90 L100 146 L110 94 L118 132 L126 106 L134 124 L142 112 L150 118 L186 118" stroke="#e9e2d3" stroke-width="14"/>
+<path d="M14 118 L50 118 L58 108 L66 128 L74 100 L82 136 L90 90 L100 146 L110 94 L118 132 L126 106 L134 124 L142 112 L150 118 L186 118" stroke="#c2410c" stroke-width="6"/></svg>
+      <div class="brand-text">
+        <h1>A-LYD</h1>
+        <p class="tagline">Timeklokke</p>
+      </div>
+      <p class="hint" style="margin: 0;">Logg inn for å synkronisere data på tvers av enheter</p>
     </div>
     <div class="field">
       <label for="authEmail">E-post</label>
@@ -49,10 +56,13 @@
 <div id="appRoot" style="display: none;">
 <header>
   <div class="brand">
-    <span class="brand-mark"></span>
+    <svg class="brand-logo" viewBox="0 0 200 200" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="100" cy="100" r="88" stroke="#1d1d1b" stroke-width="8"/>
+<path d="M58 158 L100 48 L142 158" stroke="#1d1d1b" stroke-width="14"/>
+<path d="M14 118 L50 118 L58 108 L66 128 L74 100 L82 136 L90 90 L100 146 L110 94 L118 132 L126 106 L134 124 L142 112 L150 118 L186 118" stroke="#e9e2d3" stroke-width="14"/>
+<path d="M14 118 L50 118 L58 108 L66 128 L74 100 L82 136 L90 90 L100 146 L110 94 L118 132 L126 106 L134 124 L142 112 L150 118 L186 118" stroke="#c2410c" stroke-width="6"/></svg>
     <div class="brand-text">
-      <h1>Frilans Timeklokke</h1>
-      <p class="tagline" id="syncStatus">Tid, timer og fakturagrunnlag &mdash; samlet ett sted</p>
+      <h1>A-LYD</h1>
+      <p class="tagline" id="syncStatus">Timeklokke</p>
     </div>
     <button id="signOutBtn" class="btn-small sign-out-btn" type="button">Logg ut</button>
   </div>
@@ -302,6 +312,46 @@
   </section>
 
 </main>
+</div>
+
+<div id="editOverlay" class="modal-overlay" style="display: none;">
+  <form id="editEntryForm" class="modal-card">
+    <h2>Rediger registrering</h2>
+    <div class="field">
+      <label for="editEntryProject">Prosjekt</label>
+      <select id="editEntryProject"></select>
+    </div>
+    <div class="field">
+      <label for="editEntryProjectNumber">Prosjektnr</label>
+      <input type="text" id="editEntryProjectNumber" list="projectNumbersList" />
+    </div>
+    <div class="field">
+      <label for="editEntryDate">Dato</label>
+      <input type="date" id="editEntryDate" required />
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="editEntryStart">Start</label>
+        <input type="time" id="editEntryStart" />
+      </div>
+      <div class="field">
+        <label for="editEntryEnd">Slutt</label>
+        <input type="time" id="editEntryEnd" />
+      </div>
+    </div>
+    <div class="field">
+      <label for="editEntryHours">Timer <span class="optional">(overstyrer start/slutt)</span></label>
+      <input type="number" id="editEntryHours" step="0.01" min="0" />
+    </div>
+    <div class="field">
+      <label for="editEntryNotes">Merknad</label>
+      <textarea id="editEntryNotes" rows="3"></textarea>
+    </div>
+    <div class="btn-row">
+      <button type="submit" class="btn btn-primary">Lagre</button>
+      <button type="button" id="editEntryCancel" class="btn btn-secondary">Avbryt</button>
+    </div>
+  </form>
 </div>
 
 <script src="app.js"></script>

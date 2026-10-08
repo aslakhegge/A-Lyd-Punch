@@ -664,6 +664,7 @@ function updateClockUI() {
   const numberField = document.getElementById("clockProjectNumber");
   const label = document.getElementById("timerProjectLabel");
 
+  document.getElementById("timerDisplay").classList.toggle("running", !!state.activeTimer);
   if (state.activeTimer) {
     startBtn.disabled = true;
     stopBtn.disabled = false;
@@ -908,9 +909,10 @@ function renderEntriesTable(entries) {
       <td data-label="Merknad">${escapeHtml((e.notes || "").slice(0, 60))}</td>
       <td data-label="Beløp">${formatAmount(amount, project ? project.currency : "kr")}</td>
       <td data-label="Fakturert"><button class="btn-small toggle-invoiced ${e.invoiced ? "invoiced" : ""}" data-id="${e.id}">${e.invoiced ? "Fakturert" : "Ikke fakturert"}</button></td>
-      <td class="row-actions"><button class="btn-small danger" data-id="${e.id}">Slett</button></td>
+      <td class="row-actions"><button class="btn-small edit-entry" data-id="${e.id}">Rediger</button> <button class="btn-small danger" data-id="${e.id}">Slett</button></td>
     `;
     tr.querySelector(".toggle-invoiced").addEventListener("click", () => toggleEntryInvoiced(e.id));
+    tr.querySelector(".edit-entry").addEventListener("click", () => openEditEntry(e.id));
     tr.querySelector(".danger").addEventListener("click", () => {
       if (confirm("Slette denne registreringen?")) {
         state.entries = state.entries.filter((x) => x.id !== e.id);
@@ -920,6 +922,70 @@ function renderEntriesTable(entries) {
       }
     });
     tbody.appendChild(tr);
+  });
+}
+
+let editingEntryId = null;
+
+function openEditEntry(id) {
+  const entry = state.entries.find((x) => x.id === id);
+  if (!entry) return;
+  editingEntryId = id;
+  const sel = document.getElementById("editEntryProject");
+  sel.innerHTML = state.projects
+    .map((p) => `<option value="${p.id}">${escapeHtml(p.name)}${p.number ? " (" + escapeHtml(p.number) + ")" : ""}</option>`)
+    .join("");
+  sel.value = entry.projectId || "";
+  document.getElementById("editEntryProjectNumber").value = entry.projectNumber || "";
+  document.getElementById("editEntryDate").value = entry.date;
+  document.getElementById("editEntryStart").value = entry.startTime || "";
+  document.getElementById("editEntryEnd").value = entry.endTime || "";
+  document.getElementById("editEntryHours").value = "";
+  document.getElementById("editEntryNotes").value = entry.notes || "";
+  document.getElementById("editOverlay").style.display = "flex";
+}
+
+function closeEditEntry() {
+  editingEntryId = null;
+  document.getElementById("editOverlay").style.display = "none";
+}
+
+function initEditEntry() {
+  document.getElementById("editEntryCancel").addEventListener("click", closeEditEntry);
+  document.getElementById("editEntryForm").addEventListener("submit", (ev) => {
+    ev.preventDefault();
+    const entry = state.entries.find((x) => x.id === editingEntryId);
+    if (!entry) return closeEditEntry();
+    const start = document.getElementById("editEntryStart").value;
+    const end = document.getElementById("editEntryEnd").value;
+    const hours = document.getElementById("editEntryHours").value;
+    let minutes;
+    let startTime = start;
+    let endTime = end;
+    if (hours) {
+      minutes = parseFloat(hours) * 60;
+      startTime = "";
+      endTime = "";
+    } else if (start && end) {
+      const [sh, sm] = start.split(":").map(Number);
+      const [eh, em] = end.split(":").map(Number);
+      minutes = eh * 60 + em - (sh * 60 + sm);
+      if (minutes < 0) minutes += 24 * 60;
+    } else {
+      minutes = entry.minutes; // behold eksisterende varighet
+    }
+    entry.projectId = document.getElementById("editEntryProject").value || entry.projectId;
+    entry.projectNumber = document.getElementById("editEntryProjectNumber").value.trim();
+    entry.date = document.getElementById("editEntryDate").value;
+    entry.startTime = startTime;
+    entry.endTime = endTime;
+    entry.minutes = minutes;
+    entry.notes = document.getElementById("editEntryNotes").value.trim();
+    saveState();
+    closeEditEntry();
+    renderProjectNumberDatalist();
+    renderOverview();
+    syncWrite({ type: "update", table: "freelance_entries", id: entry.id, payload: toDbEntry(entry) });
   });
 }
 
@@ -1169,6 +1235,7 @@ function init() {
   initExpenseForm();
   initManualForm();
   initOverviewFilters();
+  initEditEntry();
   initAuth();
   // initAuth() lytter på Supabase sin auth-status og kaller initAfterSignIn()
   // (som laster data og tegner opp UI) eller showAuthScreen() automatisk.

@@ -591,3 +591,213 @@ textarea { resize: vertical; }
   .timer-display { font-size: 2.2rem; }
   .summary-card { min-width: 100%; }
 }
+
+/* A-Lyd tema: sand & mørk. Lastes etter style.css og overstyrer utseendet. */
+:root {
+  --bg: #e9e2d3;
+  --card-bg: #f3eee2;
+  --text: #1d1d1b;
+  --muted: #6f6a5c;
+  --border: #cfc7b4;
+  --border-soft: #d9d1be;
+
+  --primary: #c2410c;
+  --primary-dark: #9a3309;
+  --primary-tint: #efe3d0;
+
+  --danger: #8f2a1c;
+  --danger-dark: #6f2015;
+
+  --secondary: #e3dac6;
+  --secondary-dark: #d6cbb3;
+
+  --blue-200: #d9c9b0;
+  --blue-500: #c2410c;
+  --blue-600: #c2410c;
+
+  --radius: 16px;
+  --radius-sm: 10px;
+  --shadow: none;
+
+  --font-body: "Inter", -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Instrument Serif", "Playfair Display", Georgia, serif;
+  --font-mono: "JetBrains Mono", "SF Mono", Menlo, monospace;
+}
+
+body { background: var(--bg); color: var(--text); }
+
+header {
+  background: var(--bg);
+  box-shadow: none;
+  border-bottom: 1px solid var(--border);
+  overflow: visible;
+}
+
+.brand-mark { display: none; }
+.brand-logo { width: 40px; height: 40px; flex-shrink: 0; }
+
+.brand-text h1 {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 1.25rem;
+  letter-spacing: 0.12em;
+  color: var(--text);
+}
+.tagline {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--primary);
+}
+
+.tab-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text);
+  backdrop-filter: none;
+}
+.tab-btn:hover { background: var(--secondary); border-color: var(--border); }
+.tab-btn.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+.sign-out-btn { color: var(--text); background: transparent; border-color: var(--border); }
+.sign-out-btn:hover { background: var(--secondary); }
+
+.card, .summary-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  box-shadow: none;
+}
+.card h2 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 1.6rem;
+  color: var(--text);
+}
+
+label, .data-table th, .summary-card .label, .optional {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+input, select, textarea {
+  background: #f7f3e9;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(194, 65, 12, 0.15);
+}
+input:disabled, select:disabled { background: var(--secondary); }
+
+.btn { border-radius: 10px; }
+.btn-primary { background: var(--primary); color: #fbf6ec; box-shadow: none; }
+.btn-primary:hover { background: var(--primary-dark); }
+.btn-secondary { background: transparent; border: 1px solid var(--border); color: var(--text); }
+.btn-secondary:hover { background: var(--secondary); }
+.btn-danger { background: var(--danger); }
+
+.btn-small { border-radius: 999px; color: var(--text); }
+.btn-small.invoiced { background: var(--primary-tint); color: var(--primary-dark); border-color: var(--primary); }
+.btn-small.danger { color: var(--danger); border-color: #d9b8ae; }
+
+.timer-display {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 4.4rem;
+  letter-spacing: 0;
+  background: none;
+  -webkit-background-clip: initial;
+  background-clip: initial;
+  color: var(--text);
+}
+.timer-project-label { font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0.06em; }
+
+.summary-card .value {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 2rem;
+  background: none;
+  -webkit-background-clip: initial;
+  background-clip: initial;
+  color: var(--text);
+}
+
+.data-table tbody tr:hover { background: var(--primary-tint); }
+.expense-row { background: var(--primary-tint); border-color: var(--border); }
+.expense-row strong { font-family: var(--font-mono); color: var(--primary-dark); }
+
+.auth-overlay { background: var(--bg); }
+.auth-card { background: var(--card-bg); border: 1px solid var(--border); box-shadow: none; }
+
+@media (max-width: 760px) {
+  header { padding-bottom: 12px; }
+  #tabs {
+    background: var(--text);
+    backdrop-filter: none;
+    border-top: none;
+    box-shadow: none;
+  }
+  .tab-btn { color: #cfc7b4; }
+  .tab-btn.active { background: transparent; color: #f08a52; }
+  .tab-label { font-family: var(--font-mono); font-size: 0.6rem; letter-spacing: 0.06em; text-transform: uppercase; }
+  .timer-display { font-size: 3.6rem; }
+  .data-table tr { background: var(--card-bg); box-shadow: none; border-color: var(--border); }
+}
+
+.auth-brand { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; margin-bottom: 22px; }
+.brand-logo.auth-logo { width: 84px; height: 84px; }
+.auth-brand .brand-text h1 { font-size: 1.5rem; }
+
+/* ===== Rediger-dialog ===== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(29, 29, 27, 0.55);
+  padding: 0;
+}
+.modal-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 20px 20px 0 0;
+  width: 100%;
+  max-width: 480px;
+  max-height: 92vh;
+  overflow-y: auto;
+  padding: 22px 20px calc(22px + env(safe-area-inset-bottom));
+}
+.modal-card h2 { font-family: var(--font-display); font-weight: 400; font-size: 1.6rem; margin: 0 0 16px; }
+@media (min-width: 761px) {
+  .modal-overlay { align-items: center; padding: 24px; }
+  .modal-card { border-radius: 16px; }
+}
+
+/* ===== Fargejusteringer ===== */
+:root { --muted: #5a5546; }
+.btn-danger { background: #1d1d1b; color: #f3eee2; }
+.btn-danger:hover { background: #000; }
+.btn-danger:disabled { opacity: 0.35; }
+.timer-display.running { color: var(--primary); }
+.timer-display.running::before {
+  content: "";
+  display: inline-block;
+  width: 0.18em;
+  height: 0.18em;
+  border-radius: 50%;
+  background: var(--primary);
+  margin-right: 0.22em;
+  vertical-align: middle;
+  animation: pulse 1.4s infinite;
+}
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+.btn-small.invoiced { background: #dfe6d2; color: #3f5a2e; border-color: #9fb386; }
+.btn-small.invoiced:hover { background: #d2dcc2; }
