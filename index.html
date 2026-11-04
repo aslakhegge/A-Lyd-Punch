@@ -103,13 +103,18 @@
       </div>
       <datalist id="projectNumbersList"></datalist>
 
-      <div class="timer-display" id="timerDisplay">00:00:00</div>
+      <button type="button" id="timerRing" class="timer-ring" aria-label="Start timer">
+        <svg viewBox="0 0 180 180" aria-hidden="true">
+          <circle class="ring-track" cx="90" cy="90" r="78" />
+          <circle class="ring-progress" id="ringProgress" cx="90" cy="90" r="78" transform="rotate(-90 90 90)" />
+        </svg>
+        <span class="ring-center">
+          <span class="ring-time" id="timerDisplay">00:00</span>
+          <span class="ring-sec" id="timerSeconds">00 sek</span>
+          <span class="ring-action" id="ringAction">Trykk for å starte</span>
+        </span>
+      </button>
       <div class="timer-project-label" id="timerProjectLabel"></div>
-
-      <div class="btn-row">
-        <button id="startBtn" class="btn btn-primary">Start</button>
-        <button id="stopBtn" class="btn btn-danger" disabled>Stopp</button>
-      </div>
 
       <div class="field">
         <label for="clockNotes">Merknader underveis</label>

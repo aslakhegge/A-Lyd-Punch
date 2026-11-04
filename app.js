@@ -593,8 +593,13 @@ function initProjectForm() {
 // ---------- Punch clock ----------
 
 function initClock() {
-  document.getElementById("startBtn").addEventListener("click", startTimer);
-  document.getElementById("stopBtn").addEventListener("click", stopTimer);
+  document.getElementById("timerRing").addEventListener("click", () => {
+    if (state.activeTimer) {
+      if (confirm("Stoppe klokka og lagre registreringen?")) stopTimer();
+    } else {
+      startTimer();
+    }
+  });
   document.getElementById("addNoteBtn").addEventListener("click", addTimerNote);
   document.getElementById("clockNoteInput").addEventListener("keydown", (e) => {
     if (e.key === "Enter") { e.preventDefault(); addTimerNote(); }
@@ -677,29 +682,46 @@ function resumeTimerIfActive() {
   }
 }
 
+const RING_CIRC = 2 * Math.PI * 78;
+
+function setRing(seconds, animate) {
+  const ring = document.getElementById("ringProgress");
+  ring.style.strokeDasharray = RING_CIRC;
+  if (!animate) {
+    ring.style.transition = "none";
+  }
+  ring.style.strokeDashoffset = RING_CIRC * (1 - seconds / 60);
+  if (!animate) {
+    void ring.getBoundingClientRect();
+    ring.style.transition = "";
+  }
+}
+
 function updateClockUI() {
-  const startBtn = document.getElementById("startBtn");
-  const stopBtn = document.getElementById("stopBtn");
   const projectSelect = document.getElementById("clockProject");
   const numberField = document.getElementById("clockProjectNumber");
   const label = document.getElementById("timerProjectLabel");
+  const ringBtn = document.getElementById("timerRing");
+  const action = document.getElementById("ringAction");
 
-  document.getElementById("timerDisplay").classList.toggle("running", !!state.activeTimer);
+  ringBtn.classList.toggle("running", !!state.activeTimer);
   if (state.activeTimer) {
-    startBtn.disabled = true;
-    stopBtn.disabled = false;
+    ringBtn.setAttribute("aria-label", "Stopp timer");
+    action.textContent = "Trykk for å stoppe";
     projectSelect.disabled = true;
     numberField.disabled = true;
     const proj = getProject(state.activeTimer.projectId);
     const num = state.activeTimer.projectNumber;
     label.textContent = proj ? `Kjører for: ${proj.name}${num ? " · " + num : ""}` : "";
   } else {
-    startBtn.disabled = false;
-    stopBtn.disabled = true;
+    ringBtn.setAttribute("aria-label", "Start timer");
+    action.textContent = "Trykk for å starte";
     projectSelect.disabled = false;
     numberField.disabled = false;
     label.textContent = "";
-    document.getElementById("timerDisplay").textContent = "00:00:00";
+    document.getElementById("timerDisplay").textContent = "00:00";
+    document.getElementById("timerSeconds").textContent = "00 sek";
+    setRing(0, false);
   }
 }
 
@@ -720,8 +742,11 @@ function tick() {
   const totalSec = Math.floor(elapsed / 1000);
   const h = String(Math.floor(totalSec / 3600)).padStart(2, "0");
   const m = String(Math.floor((totalSec % 3600) / 60)).padStart(2, "0");
-  const s = String(totalSec % 60).padStart(2, "0");
-  document.getElementById("timerDisplay").textContent = `${h}:${m}:${s}`;
+  const sec = totalSec % 60;
+  document.getElementById("timerDisplay").textContent = `${h}:${m}`;
+  document.getElementById("timerSeconds").textContent = `${String(sec).padStart(2, "0")} sek`;
+  // Ringen fylles i løpet av 60 sek; hopp tilbake uten animasjon ved ny runde.
+  setRing(sec + 1, sec !== 0);
 }
 
 // ---------- Expenses (utlegg) ----------
