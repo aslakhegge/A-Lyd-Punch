@@ -376,8 +376,30 @@ function computeEntryAmount(entry) {
   const hours = entry.minutes / 60;
 
   if (project.rateType === "daily") {
-    const dayHours = project.dayHours || 8;
-    return (hours / dayHours) * project.rate;
+    // Dagsats = fast pris per dag (samme pris for 4 eller 8 timer).
+    // Dagsatsen regnes på første registrering den dagen for prosjektet;
+    // eventuelle flere registreringer samme dag gir 0 i grunnpris.
+    const dayEntries = getProjectDayEntries(entry.projectId, entry.date);
+    const idx = dayEntries.findIndex((e) => e.id === entry.id);
+    let amount = idx <= 0 ? project.rate : 0;
+
+    // Valgfritt overtidstillegg etter X timer/dag, beregnet mot timepris
+    // utledet fra dagsats / normal arbeidsdag.
+    if (project.overtimeEnabled && project.overtime50Hours) {
+      const thr50 = project.overtime50Hours;
+      const thr100 = project.overtime100Hours && project.overtime100Hours > thr50
+        ? project.overtime100Hours
+        : Infinity;
+      let startHour = 0;
+      for (const e of dayEntries) {
+        if (e.id === entry.id) break;
+        startHour += e.minutes / 60;
+      }
+      const bands = splitHoursIntoBands(startHour, startHour + hours, thr50, thr100);
+      const hourly = project.rate / (project.dayHours || 8);
+      amount += bands.ot50 * hourly * 1.5 + bands.ot100 * hourly * 2;
+    }
+    return amount;
   }
 
   // Timelønn uten overtidstillegg
@@ -469,11 +491,10 @@ function renderProjectsTable() {
   }
   state.projects.forEach((p) => {
     let details = "-";
-    if (p.rateType === "daily") {
-      details = `${p.dayHours} t/dag`;
-    } else if (p.overtimeEnabled && p.overtime50Hours) {
-      details = `OT 50% &gt; ${p.overtime50Hours}t`;
-      if (p.overtime100Hours) details += ` · 100% &gt; ${p.overtime100Hours}t`;
+    if (p.rateType === "daily") details = "Fast dagpris";
+    if (p.overtimeEnabled && p.overtime50Hours) {
+      const ot = `OT 50% &gt; ${p.overtime50Hours}t` + (p.overtime100Hours ? ` · 100% &gt; ${p.overtime100Hours}t` : "");
+      details = details === "-" ? ot : `${details} · ${ot}`;
     }
     const tr = document.createElement("tr");
     tr.innerHTML = `
@@ -539,9 +560,8 @@ function initProjectForm() {
   function updateVisibility() {
     const isDaily = rateTypeSelect.value === "daily";
     dayHoursField.style.display = isDaily ? "flex" : "none";
-    overtimeToggleField.style.display = isDaily ? "none" : "flex";
-    overtimeRatesFields.style.display = (!isDaily && overtimeEnabledCheckbox.checked) ? "flex" : "none";
-    if (isDaily) overtimeEnabledCheckbox.checked = false;
+    overtimeToggleField.style.display = "flex";
+    overtimeRatesFields.style.display = overtimeEnabledCheckbox.checked ? "flex" : "none";
   }
   rateTypeSelect.addEventListener("change", updateVisibility);
   overtimeEnabledCheckbox.addEventListener("change", updateVisibility);
@@ -888,40 +908,95 @@ function renderOverview() {
   renderSummaryCards(entries, expenses);
 }
 
+const expandedItems = new Set();
+
+function fmtShortDate(iso) {
+  const [y, m, d] = iso.split("-");
+  const cur = String(new Date().getFullYear());
+  return `${d}.${m}${y !== cur ? "." + y.slice(2) : ""}`;
+}
+
+function fmtKr(n) {
+  return `${Math.round(n).toLocaleString("nb-NO")} kr`;
+}
+
+function buildItem({ id, date, title, sub, hours, amount, invoiced, details, actions }) {
+  const open = expandedItems.has(id);
+  const el = document.createElement("div");
+  el.className = "item" + (open ? " open" : "");
+  el.innerHTML = `
+    <button type="button" class="item-head" aria-expanded="${open}">
+      <span class="item-date">${fmtShortDate(date)}</span>
+      <span class="item-main">
+        <span class="item-title">${title}</span>
+        ${sub ? `<span class="item-sub">${sub}</span>` : ""}
+      </span>
+      <span class="item-right">
+        ${hours ? `<span class="item-hours">${hours}</span>` : ""}
+        <span class="item-amount">${amount}</span>
+      </span>
+      <span class="item-dot ${invoiced ? "on" : ""}" title="${invoiced ? "Fakturert" : "Ikke fakturert"}"></span>
+    </button>
+    <div class="item-detail" ${open ? "" : "hidden"}>
+      <dl>${details.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join("")}</dl>
+      <div class="item-actions"></div>
+    </div>`;
+  el.querySelector(".item-head").addEventListener("click", () => {
+    const isOpen = el.classList.toggle("open");
+    el.querySelector(".item-detail").hidden = !isOpen;
+    el.querySelector(".item-head").setAttribute("aria-expanded", isOpen);
+    if (isOpen) expandedItems.add(id); else expandedItems.delete(id);
+  });
+  const box = el.querySelector(".item-actions");
+  actions.forEach(({ label, cls, fn }) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "btn-small " + (cls || "");
+    b.textContent = label;
+    b.addEventListener("click", fn);
+    box.appendChild(b);
+  });
+  return el;
+}
+
 function renderEntriesTable(entries) {
-  const tbody = document.querySelector("#entriesTable tbody");
-  tbody.innerHTML = "";
+  const list = document.getElementById("entriesList");
+  list.innerHTML = "";
   if (entries.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="10" class="empty-state">Ingen registreringer for valgt filter</td></tr>`;
+    list.innerHTML = `<p class="empty-state">Ingen registreringer for valgt filter</p>`;
     return;
   }
   entries.forEach((e) => {
     const project = getProject(e.projectId);
-    const amount = computeEntryAmount(e);
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td data-label="Dato">${e.date}</td>
-      <td data-label="Prosjekt">${project ? escapeHtml(project.name) : "(slettet prosjekt)"}</td>
-      <td data-label="Prosjektnr">${escapeHtml(entryProjectNumber(e))}</td>
-      <td data-label="Start">${e.startTime || ""}</td>
-      <td data-label="Slutt">${e.endTime || ""}</td>
-      <td data-label="Timer">${formatMinutes(e.minutes)}</td>
-      <td data-label="Merknad">${escapeHtml((e.notes || "").slice(0, 60))}</td>
-      <td data-label="Beløp">${formatAmount(amount, project ? project.currency : "kr")}</td>
-      <td data-label="Fakturert"><button class="btn-small toggle-invoiced ${e.invoiced ? "invoiced" : ""}" data-id="${e.id}">${e.invoiced ? "Fakturert" : "Ikke fakturert"}</button></td>
-      <td class="row-actions"><button class="btn-small edit-entry" data-id="${e.id}">Rediger</button> <button class="btn-small danger" data-id="${e.id}">Slett</button></td>
-    `;
-    tr.querySelector(".toggle-invoiced").addEventListener("click", () => toggleEntryInvoiced(e.id));
-    tr.querySelector(".edit-entry").addEventListener("click", () => openEditEntry(e.id));
-    tr.querySelector(".danger").addEventListener("click", () => {
-      if (confirm("Slette denne registreringen?")) {
-        state.entries = state.entries.filter((x) => x.id !== e.id);
-        saveState();
-        renderOverview();
-        syncWrite({ type: "delete", table: "freelance_entries", id: e.id });
-      }
-    });
-    tbody.appendChild(tr);
+    const num = entryProjectNumber(e);
+    const time = e.startTime && e.endTime ? `${e.startTime}–${e.endTime}` : "";
+    const details = [];
+    if (time) details.push(["Tid", time]);
+    details.push(["Prosjektnr", escapeHtml(num) || "–"]);
+    details.push(["Beløp", formatAmount(computeEntryAmount(e), project ? project.currency : "kr")]);
+    details.push(["Merknad", e.notes ? escapeHtml(e.notes).replace(/\n/g, "<br>") : "–"]);
+    list.appendChild(buildItem({
+      id: e.id,
+      date: e.date,
+      title: project ? escapeHtml(project.name) : "(slettet prosjekt)",
+      sub: escapeHtml(num),
+      hours: formatMinutes(e.minutes),
+      amount: fmtKr(computeEntryAmount(e)),
+      invoiced: e.invoiced,
+      details,
+      actions: [
+        { label: e.invoiced ? "Fakturert ✓" : "Merk fakturert", cls: e.invoiced ? "invoiced" : "", fn: () => toggleEntryInvoiced(e.id) },
+        { label: "Rediger", fn: () => openEditEntry(e.id) },
+        { label: "Slett", cls: "danger", fn: () => {
+          if (confirm("Slette denne registreringen?")) {
+            state.entries = state.entries.filter((x) => x.id !== e.id);
+            saveState();
+            renderOverview();
+            syncWrite({ type: "delete", table: "freelance_entries", id: e.id });
+          }
+        } },
+      ],
+    }));
   });
 }
 
@@ -990,29 +1065,33 @@ function initEditEntry() {
 }
 
 function renderExpensesTable(expenses) {
-  const tbody = document.querySelector("#expensesTable tbody");
-  tbody.innerHTML = "";
+  const list = document.getElementById("expensesList");
+  list.innerHTML = "";
   if (expenses.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="7" class="empty-state">Ingen utlegg for valgt filter</td></tr>`;
+    list.innerHTML = `<p class="empty-state">Ingen utlegg for valgt filter</p>`;
     return;
   }
   expenses.forEach((e) => {
     const project = getProject(e.projectId);
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td data-label="Dato">${e.date}</td>
-      <td data-label="Prosjekt">${project ? escapeHtml(project.name) : "(slettet prosjekt)"}</td>
-      <td data-label="Prosjektnr">${escapeHtml(entryProjectNumber(e))}</td>
-      <td data-label="Beskrivelse">${escapeHtml(e.description || "")}</td>
-      <td data-label="Beløp">${formatAmount(e.amount, project ? project.currency : "kr")}</td>
-      <td data-label="Fakturert"><button class="btn-small toggle-invoiced ${e.invoiced ? "invoiced" : ""}" data-id="${e.id}">${e.invoiced ? "Fakturert" : "Ikke fakturert"}</button></td>
-      <td class="row-actions"><button class="btn-small danger" data-id="${e.id}">Slett</button></td>
-    `;
-    tr.querySelector(".toggle-invoiced").addEventListener("click", () => toggleExpenseInvoiced(e.id));
-    tr.querySelector(".danger").addEventListener("click", () => {
-      if (confirm("Slette dette utlegget?")) deleteExpense(e.id);
-    });
-    tbody.appendChild(tr);
+    const num = entryProjectNumber(e);
+    list.appendChild(buildItem({
+      id: e.id,
+      date: e.date,
+      title: escapeHtml(e.description || "Utlegg"),
+      sub: project ? escapeHtml(project.name) : "(slettet prosjekt)",
+      hours: "",
+      amount: fmtKr(e.amount),
+      invoiced: e.invoiced,
+      details: [
+        ["Prosjekt", project ? escapeHtml(project.name) : "–"],
+        ["Prosjektnr", escapeHtml(num) || "–"],
+        ["Beløp", formatAmount(e.amount, project ? project.currency : "kr")],
+      ],
+      actions: [
+        { label: e.invoiced ? "Fakturert ✓" : "Merk fakturert", cls: e.invoiced ? "invoiced" : "", fn: () => toggleExpenseInvoiced(e.id) },
+        { label: "Slett", cls: "danger", fn: () => { if (confirm("Slette dette utlegget?")) deleteExpense(e.id); } },
+      ],
+    }));
   });
 }
 

@@ -210,7 +210,7 @@
             <input type="number" id="projRate" step="0.01" min="0" required />
           </div>
           <div class="field" id="dayHoursField">
-            <label for="projDayHours">Timer per dag (for dagsats)</label>
+            <label for="projDayHours">Normal arbeidsdag (timer) <span class="optional">(brukes til overtid)</span></label>
             <input type="number" id="projDayHours" step="0.5" min="1" value="8" />
           </div>
         </div>
@@ -288,26 +288,12 @@
 
     <div class="card">
       <h2>Registreringer</h2>
-      <div class="table-wrap">
-      <table id="entriesTable" class="data-table">
-        <thead>
-          <tr><th>Dato</th><th>Prosjekt</th><th>Prosjektnr</th><th>Start</th><th>Slutt</th><th>Timer</th><th>Merknad</th><th>Beløp</th><th>Fakturert</th><th></th></tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-      </div>
+      <div id="entriesList" class="item-list"></div>
     </div>
 
     <div class="card">
       <h2>Utlegg</h2>
-      <div class="table-wrap">
-      <table id="expensesTable" class="data-table">
-        <thead>
-          <tr><th>Dato</th><th>Prosjekt</th><th>Prosjektnr</th><th>Beskrivelse</th><th>Beløp</th><th>Fakturert</th><th></th></tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-      </div>
+      <div id="expensesList" class="item-list"></div>
     </div>
   </section>
 
